@@ -278,6 +278,51 @@ func TestMarkStaleOfflineOnlyTouchesDevicesSeenBeforeCutoff(t *testing.T) {
 	}
 }
 
+func TestDeviceStaysOnlineForExactlyTheHeartbeatTimeout(t *testing.T) {
+	repo := newTestRepository(t)
+	ctx := context.Background()
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	svc := device.NewService(repo, highLimit, 60*time.Second, func() time.Time { return now })
+	d := create(t, repo, "org-1", "a")
+	if err := svc.RecordHeartbeat(ctx, "org-1", d.ID); err != nil {
+		t.Fatalf("RecordHeartbeat: %v", err)
+	}
+
+	steps := []struct {
+		name       string
+		advance    time.Duration
+		wantStatus device.Status
+	}{
+		{"59s after heartbeat", 59 * time.Second, device.StatusOnline},
+		{"exactly 60s after heartbeat", time.Second, device.StatusOnline},
+		{"just over 60s after heartbeat", time.Microsecond, device.StatusOffline},
+	}
+	for _, step := range steps {
+		now = now.Add(step.advance)
+		if _, err := svc.MarkStaleOffline(ctx); err != nil {
+			t.Fatalf("%s: MarkStaleOffline: %v", step.name, err)
+		}
+		got, err := svc.Get(ctx, "org-1", d.ID)
+		if err != nil {
+			t.Fatalf("%s: Get: %v", step.name, err)
+		}
+		if got.Status != step.wantStatus {
+			t.Errorf("%s: status = %q, want %q", step.name, got.Status, step.wantStatus)
+		}
+	}
+
+	if err := svc.RecordHeartbeat(ctx, "org-1", d.ID); err != nil {
+		t.Fatalf("RecordHeartbeat: %v", err)
+	}
+	got, err := svc.Get(ctx, "org-1", d.ID)
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+	if got.Status != device.StatusOnline {
+		t.Errorf("after new heartbeat: status = %q, want online", got.Status)
+	}
+}
+
 func runConcurrently(n int, fn func(i int) error) []error {
 	errs := make([]error, n)
 	var wg sync.WaitGroup
