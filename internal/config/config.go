@@ -1,4 +1,3 @@
-// Package config reads the service configuration from environment variables.
 package config
 
 import (
@@ -18,13 +17,10 @@ type Config struct {
 	ShutdownTimeout  time.Duration
 }
 
-// Load reads the configuration from the process environment.
 func Load() (Config, error) {
 	return load(os.LookupEnv)
 }
 
-// load takes the lookup function as a parameter so tests do not have to
-// touch the real environment.
 func load(lookup func(string) (string, bool)) (Config, error) {
 	var errs []error
 
