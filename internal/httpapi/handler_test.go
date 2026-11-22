@@ -263,3 +263,14 @@ func TestUnknownRouteReturnsJSONNotFound(t *testing.T) {
 
 	assertError(t, rec, http.StatusNotFound, "route_not_found")
 }
+
+func TestRegisterLocationUsesTheOrgIDStoredByTheService(t *testing.T) {
+	svc := &stubService{device: sampleDevice}
+
+	rec := send(svc, http.MethodPost, "/orgs/%20org-1/devices", `{"name":"build-01","platform":"linux"}`)
+
+	wantLocation := "/orgs/org-1/devices/" + sampleDevice.ID
+	if got := rec.Header().Get("Location"); got != wantLocation {
+		t.Errorf("Location = %q, want %q", got, wantLocation)
+	}
+}

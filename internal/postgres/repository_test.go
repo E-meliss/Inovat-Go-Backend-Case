@@ -348,3 +348,25 @@ func countOutcomes(errs []error, expected error) (succeeded, rejected int) {
 	}
 	return succeeded, rejected
 }
+
+func TestOlderHeartbeatNeverMovesLastSeenBackwards(t *testing.T) {
+	repo := newTestRepository(t)
+	ctx := context.Background()
+	d := create(t, repo, "org-1", "a")
+	newest := time.Now().UTC().Truncate(time.Microsecond)
+
+	if err := repo.RecordHeartbeat(ctx, "org-1", d.ID, newest); err != nil {
+		t.Fatalf("RecordHeartbeat: %v", err)
+	}
+	if err := repo.RecordHeartbeat(ctx, "org-1", d.ID, newest.Add(-10*time.Second)); err != nil {
+		t.Fatalf("RecordHeartbeat: %v", err)
+	}
+
+	got, err := repo.Get(ctx, "org-1", d.ID)
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+	if got.LastSeenAt == nil || !got.LastSeenAt.Equal(newest) {
+		t.Errorf("last seen = %v, want %v", got.LastSeenAt, newest)
+	}
+}

@@ -11,6 +11,7 @@ import (
 type stubRepo struct {
 	err error
 
+	org           string
 	created       NewDevice
 	createdLimit  int
 	heartbeatAt   time.Time
@@ -26,13 +27,23 @@ func (r *stubRepo) Create(_ context.Context, d NewDevice, maxDevices int) (Devic
 	return Device{Name: d.Name, Platform: d.Platform, OrgID: d.OrgID}, nil
 }
 
-func (r *stubRepo) List(context.Context, string) ([]Device, error) { return nil, r.err }
+func (r *stubRepo) List(_ context.Context, orgID string) ([]Device, error) {
+	r.org = orgID
+	return nil, r.err
+}
 
-func (r *stubRepo) Get(context.Context, string, string) (Device, error) { return Device{}, r.err }
+func (r *stubRepo) Get(_ context.Context, orgID, _ string) (Device, error) {
+	r.org = orgID
+	return Device{}, r.err
+}
 
-func (r *stubRepo) Delete(context.Context, string, string) error { return r.err }
+func (r *stubRepo) Delete(_ context.Context, orgID, _ string) error {
+	r.org = orgID
+	return r.err
+}
 
-func (r *stubRepo) RecordHeartbeat(_ context.Context, _, _ string, seenAt time.Time) error {
+func (r *stubRepo) RecordHeartbeat(_ context.Context, orgID, _ string, seenAt time.Time) error {
+	r.org = orgID
 	r.heartbeatAt = seenAt
 	return r.err
 }
@@ -73,6 +84,9 @@ func TestRegisterValidatesInput(t *testing.T) {
 		"empty org":         {"", "a", "linux"},
 		"name too long":     {"org-1", strings.Repeat("a", maxNameLength+1), "linux"},
 		"platform too long": {"org-1", "a", strings.Repeat("a", maxPlatformLength+1)},
+		"nul in name":       {"org-1", "a\x00b", "linux"},
+		"nul in platform":   {"org-1", "a", "li\x00nux"},
+		"nul in org":        {"org\x00-1", "a", "linux"},
 	}
 
 	for name, tc := range tests {
@@ -143,5 +157,57 @@ func TestMarkStaleOfflineCutoffIsTimeoutBeforeNow(t *testing.T) {
 	}
 	if n != 2 {
 		t.Errorf("affected = %d, want 2", n)
+	}
+}
+
+func TestEveryOperationUsesTheSameNormalizedOrgID(t *testing.T) {
+	ctx := context.Background()
+	operations := map[string]func(*Service) error{
+		"register":  func(s *Service) error { _, err := s.Register(ctx, "  acme ", "a", "linux"); return err },
+		"list":      func(s *Service) error { _, err := s.List(ctx, "  acme "); return err },
+		"get":       func(s *Service) error { _, err := s.Get(ctx, "  acme ", "id"); return err },
+		"delete":    func(s *Service) error { return s.Delete(ctx, "  acme ", "id") },
+		"heartbeat": func(s *Service) error { return s.RecordHeartbeat(ctx, "  acme ", "id") },
+	}
+
+	for name, operation := range operations {
+		t.Run(name, func(t *testing.T) {
+			repo := &stubRepo{}
+
+			if err := operation(newTestService(repo)); err != nil {
+				t.Fatalf("operation: %v", err)
+			}
+
+			got := repo.org
+			if name == "register" {
+				got = repo.created.OrgID
+			}
+			if got != "acme" {
+				t.Errorf("repo received org %q, want %q", got, "acme")
+			}
+		})
+	}
+}
+
+func TestInvalidOrgIDIsRejectedByEveryOperation(t *testing.T) {
+	ctx := context.Background()
+	tooLong := strings.Repeat("a", maxOrgIDLength+1)
+	operations := map[string]func(*Service) error{
+		"list":      func(s *Service) error { _, err := s.List(ctx, tooLong); return err },
+		"get":       func(s *Service) error { _, err := s.Get(ctx, "a\x00", "id"); return err },
+		"delete":    func(s *Service) error { return s.Delete(ctx, "  ", "id") },
+		"heartbeat": func(s *Service) error { return s.RecordHeartbeat(ctx, tooLong, "id") },
+	}
+
+	for name, operation := range operations {
+		t.Run(name, func(t *testing.T) {
+			var invalid *InvalidInputError
+
+			err := operation(newTestService(&stubRepo{}))
+
+			if !errors.As(err, &invalid) {
+				t.Errorf("err = %v, want *InvalidInputError", err)
+			}
+		})
 	}
 }

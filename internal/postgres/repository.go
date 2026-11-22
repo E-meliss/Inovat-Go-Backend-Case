@@ -99,7 +99,7 @@ func (r *Repository) Delete(ctx context.Context, orgID, id string) error {
 
 func (r *Repository) RecordHeartbeat(ctx context.Context, orgID, id string, seenAt time.Time) error {
 	tag, err := r.pool.Exec(ctx,
-		`UPDATE devices SET status = 'online', last_seen_at = $3 WHERE org_id = $1 AND id = $2::uuid`,
+		`UPDATE devices SET status = 'online', last_seen_at = GREATEST(last_seen_at, $3) WHERE org_id = $1 AND id = $2::uuid`,
 		orgID, id, seenAt)
 	if err != nil {
 		return fmt.Errorf("record heartbeat: %w", translate(err))

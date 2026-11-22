@@ -40,30 +40,53 @@ func NewService(repo Repository, maxDevicesPerOrg int, heartbeatTimeout time.Dur
 }
 
 func (s *Service) Register(ctx context.Context, orgID, name, platform string) (Device, error) {
+	orgID, err := normalizeOrgID(orgID)
+	if err != nil {
+		return Device{}, err
+	}
 	d := NewDevice{
-		OrgID:    strings.TrimSpace(orgID),
+		OrgID:    orgID,
 		Name:     strings.TrimSpace(name),
 		Platform: strings.TrimSpace(platform),
 	}
-	if err := validate(d); err != nil {
+	if err := validateField("name", d.Name, maxNameLength); err != nil {
+		return Device{}, err
+	}
+	if err := validateField("platform", d.Platform, maxPlatformLength); err != nil {
 		return Device{}, err
 	}
 	return s.repo.Create(ctx, d, s.maxDevicesPerOrg)
 }
 
 func (s *Service) List(ctx context.Context, orgID string) ([]Device, error) {
+	orgID, err := normalizeOrgID(orgID)
+	if err != nil {
+		return nil, err
+	}
 	return s.repo.List(ctx, orgID)
 }
 
 func (s *Service) Get(ctx context.Context, orgID, id string) (Device, error) {
+	orgID, err := normalizeOrgID(orgID)
+	if err != nil {
+		return Device{}, err
+	}
 	return s.repo.Get(ctx, orgID, id)
 }
 
 func (s *Service) Delete(ctx context.Context, orgID, id string) error {
+	orgID, err := normalizeOrgID(orgID)
+	if err != nil {
+		return err
+	}
 	return s.repo.Delete(ctx, orgID, id)
 }
 
 func (s *Service) RecordHeartbeat(ctx context.Context, orgID, id string) error {
+	orgID, err := normalizeOrgID(orgID)
+	if err != nil {
+		return err
+	}
 	return s.repo.RecordHeartbeat(ctx, orgID, id, s.now())
 }
 
@@ -72,23 +95,23 @@ func (s *Service) MarkStaleOffline(ctx context.Context) (int64, error) {
 	return s.repo.MarkStaleOffline(ctx, cutoff)
 }
 
-func validate(d NewDevice) error {
-	fields := []struct {
-		name  string
-		value string
-		max   int
-	}{
-		{"org id", d.OrgID, maxOrgIDLength},
-		{"name", d.Name, maxNameLength},
-		{"platform", d.Platform, maxPlatformLength},
+func normalizeOrgID(orgID string) (string, error) {
+	orgID = strings.TrimSpace(orgID)
+	if err := validateField("org id", orgID, maxOrgIDLength); err != nil {
+		return "", err
 	}
-	for _, f := range fields {
-		if f.value == "" {
-			return &InvalidInputError{Message: f.name + " is required"}
-		}
-		if utf8.RuneCountInString(f.value) > f.max {
-			return &InvalidInputError{Message: fmt.Sprintf("%s must be at most %d characters", f.name, f.max)}
-		}
+	return orgID, nil
+}
+
+func validateField(name, value string, maxLength int) error {
+	if value == "" {
+		return &InvalidInputError{Message: name + " is required"}
+	}
+	if strings.ContainsRune(value, 0) {
+		return &InvalidInputError{Message: name + " must not contain null characters"}
+	}
+	if utf8.RuneCountInString(value) > maxLength {
+		return &InvalidInputError{Message: fmt.Sprintf("%s must be at most %d characters", name, maxLength)}
 	}
 	return nil
 }

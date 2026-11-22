@@ -81,7 +81,7 @@ func (h *handler) register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Location", fmt.Sprintf("/orgs/%s/devices/%s", url.PathEscape(orgID), d.ID))
+	w.Header().Set("Location", fmt.Sprintf("/orgs/%s/devices/%s", url.PathEscape(d.OrgID), d.ID))
 	h.writeJSON(w, http.StatusCreated, toResponse(d))
 }
 
