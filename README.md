@@ -1,4 +1,4 @@
-<img width="1394" height="125" alt="image" src="https://github.com/user-attachments/assets/d4134017-d05b-4feb-81be-8a4182a1094e" /># Device Registry
+# Device Registry
 
 Bir organizasyona bağlı cihazları kaydeden, heartbeat'lerini takip eden ve heartbeat'i kesilen cihazları offline yapan küçük bir Go servisi.
 
