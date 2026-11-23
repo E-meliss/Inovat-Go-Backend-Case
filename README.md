@@ -1,6 +1,6 @@
 # Device Registry
 
-Bir organizasyona bağlı cihazları kaydeden, heartbeat'lerini takip eden ve heartbeat'i kesilen cihazları offline yapan küçük bir Go servisi. Go ve PostgreSQL kullanıyor.
+Bir organizasyona bağlı cihazları kaydeden, heartbeat'lerini takip eden ve heartbeat'i kesilen cihazları offline yapan küçük bir Go servisi.
 
 Endpoint'ler:
 
