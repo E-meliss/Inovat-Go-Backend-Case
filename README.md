@@ -77,8 +77,6 @@ PDF'te bilerek açık bırakılmış noktalar için soru sormak yerine makul var
 
 **Heartbeat cihazı online yapar.** Heartbeat atan cihaz offline olsa bile tekrar online olur, çünkü heartbeat geldiyse cihaz çalışıyor demektir. Olmayan bir cihaz için heartbeat gelirse 404 döndürüyorum.
 
-**`status` biraz bayat olabilir.** Kural 4 status'un veritabanında saklanmasını ve bir arka plan işinin offline yapmasını istiyor. Worker 10 saniyede bir çalıştığı için bir cihazın heartbeat'i kesildikten sonra offline görünmesi en kötü ihtimalle 60 saniye + 10 saniye sürebilir. Okuma sırasında ayrıca hesaplama yapmadım, çünkü o zaman status'u saklamanın bir anlamı kalmazdı. Aralık `WORKER_INTERVAL` ile değiştirilebiliyor.
-
 **Tam 60 saniye hâlâ online.** Kural "son 60 saniye içinde" dediği için, heartbeat'ten tam 60 saniye geçmiş cihazı online sayıyorum, 60 saniyeyi aşınca offline oluyor.
 
 **İsimler büyük/küçük harfe duyarlı.** İsim benzersizliğini `UNIQUE (org_id, name)` ile sağladığım için ayrıca bir kural yazmadım. Postgres'in varsayılan metin karşılaştırması büyük/küçük harfe duyarlı olduğu için `Build-01` ile `build-01` farklı cihazlar sayılıyor.
