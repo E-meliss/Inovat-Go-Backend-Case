@@ -1,4 +1,4 @@
-# Device Registry
+<img width="1394" height="125" alt="image" src="https://github.com/user-attachments/assets/d4134017-d05b-4feb-81be-8a4182a1094e" /># Device Registry
 
 Bir organizasyona bağlı cihazları kaydeden, heartbeat'lerini takip eden ve heartbeat'i kesilen cihazları offline yapan küçük bir Go servisi.
 
@@ -93,7 +93,7 @@ Bir org en fazla 5 cihaz (varsayılan, ayarlanabilir) taşıyabilir. Aynı org'a
 
 Değerlendirip seçmediğim alternatif: bir `orgs` tablosu açıp o org'un satırını `SELECT ... FOR UPDATE` ile kilitlemek. Bu daha doğal bir yöntem olurdu ve olmayan org için 404 vermek gibi şeyleri de getirirdi. Ama org yönetimi kapsam dışı olduğu için tablo, seed ve ek kod eklemek istemedim, o yüzden advisory lock seçtim.
 
-Bedeli: lock anahtarı org ID'nin hash'i olduğu için iki farklı org'un hash'i çakışırsa birbirini gereksiz yere bekleyebilir. Sonuç yine doğru olur ama o istekler biraz yavaşlar. Ayrıca kilit bir satıra değil bir sayıya bağlı olduğu için veritabanına bakarak ne kilitlendiğini anlamak daha zor.
+Lock anahtarı org ID'nin hash'i olduğu için iki farklı org'un hash'i çakışırsa birbirini gereksiz yere bekleyebilir. Sonuç yine doğru olur ama o istekler biraz yavaşlar. Ayrıca kilit bir satıra değil bir sayıya bağlı olduğu için veritabanına bakarak ne kilitlendiğini anlamak daha zor.
 
 ## 5. Eksikler
 
@@ -105,7 +105,7 @@ Daha fazla zamanım olsaydı ve kapsamı genişletmek isteseydim aşağıdakiler
 
 **Liste için sayfalama.** `GET /orgs/{orgID}/devices` tüm cihazları dönüyor. Org başına limit 5 olduğu için şimdilik sorun değil, ama limit büyütülürse sayfalama gerekir.
 
-**Sağlık kontrolü ve gözlemlenebilirlik.** Servisin `/healthz` gibi bir endpoint'i yok, bu yüzden compose'ta uygulama için healthcheck tanımlayamadım. İstek logu, metrik ve istek zaman aşımı da yok. HTTP sunucusunda sadece `ReadHeaderTimeout` var.
+**Health check ve observability** Servisin `/healthz` gibi bir endpoint'i yok, bu yüzden compose'ta uygulama için healthcheck tanımlayamadım. İstek logu, metrik ve istek zaman aşımı da yok. HTTP sunucusunda sadece `ReadHeaderTimeout` var.
 
 **Kapanışın otomatik testi.** Graceful shutdown'ı `docker compose stop` ile elle doğruladım ama bunun için otomatik bir test yazmadım. Worker ile heartbeat'in aynı anda çalıştığı durum için de deterministik bir test yok, bu davranışın doğruluğunu tek bir atomik SQL sorgusuna dayandırdım.
 
